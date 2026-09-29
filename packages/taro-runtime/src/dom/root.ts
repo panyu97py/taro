@@ -39,6 +39,10 @@ function isChildNodesPath (relativePath: string): boolean {
   return relativePath === Shortcuts.Childnodes || relativePath.startsWith(`${Shortcuts.Childnodes}.`)
 }
 
+function shouldUpdateCustomWrapperBatchId (relativePath: string): boolean {
+  return relativePath === '' || isChildNodesPath(relativePath)
+}
+
 function resolveCustomWrapperPath (root: TaroRootElement, dataPath: string[]): CustomWrapperPathInfo | undefined {
   let currentData: any = root
   let updateTarget: CustomWrapperUpdateTarget | undefined
@@ -121,7 +125,7 @@ export class TaroRootElement extends TaroElement {
       .filter(wrapper => {
         const relativePath = dataPath.slice(wrapper.pathIndex + 1).join('.')
 
-        return isChildNodesPath(relativePath)
+        return shouldUpdateCustomWrapperBatchId(relativePath)
       })
       .map(wrapper => wrapper.node)
 
