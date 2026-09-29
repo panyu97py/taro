@@ -30,6 +30,11 @@ interface CustomWrapperPathInfo {
   updateTarget?: CustomWrapperUpdateTarget
 }
 
+interface QueuedUpdatePayload extends UpdatePayload {
+  customWrapperNodes?: TaroElement[]
+  isPathReset?: boolean
+}
+
 function isChildNodesPath (relativePath: string): boolean {
   return relativePath === Shortcuts.Childnodes || relativePath.startsWith(`${Shortcuts.Childnodes}.`)
 }
@@ -75,7 +80,7 @@ function resolveCustomWrapperPath (root: TaroRootElement, dataPath: string[]): C
 }
 
 export class TaroRootElement extends TaroElement {
-  private updatePayloads: UpdatePayload[] = []
+  private updatePayloads: QueuedUpdatePayload[] = []
 
   private updateCallbacks: TFunc[] = []
 
@@ -110,8 +115,17 @@ export class TaroRootElement extends TaroElement {
     setTimeout(fn)
   }
 
-  public enqueueUpdate (payload: UpdatePayload): void {
-    this.updatePayloads.push(payload)
+  public enqueueUpdate (payload: UpdatePayload, isPathReset = false): void {
+    const dataPath = payload.path.split('.')
+    const customWrapperNodes = resolveCustomWrapperPath(this, dataPath)?.wrapperChain
+      .filter(wrapper => {
+        const relativePath = dataPath.slice(wrapper.pathIndex + 1).join('.')
+
+        return isChildNodesPath(relativePath)
+      })
+      .map(wrapper => wrapper.node)
+
+    this.updatePayloads.push({ ...payload, customWrapperNodes, isPathReset })
 
     if (!this.pendingUpdate && this.ctx) {
       this.performUpdate()
@@ -135,17 +149,13 @@ export class TaroRootElement extends TaroElement {
       )
 
       while (this.updatePayloads.length > 0) {
-        const { path, value } = this.updatePayloads.shift()!
-        const dataPath = path.split('.')
-        const pathInfo = resolveCustomWrapperPath(this, dataPath)
-        pathInfo?.wrapperChain.forEach((wrapper) => {
-          const relativePath = dataPath.slice(wrapper.pathIndex + 1).join('.')
+        const { path, value, customWrapperNodes, isPathReset } = this.updatePayloads.shift()!
+        customWrapperNodes?.forEach((node) => {
+          if (node._root !== this) return
 
-          if (!isChildNodesPath(relativePath)) return
-
-          wrapper.node.updateBatchId = updateBatchId
+          node.updateBatchId = updateBatchId
         })
-        if (path.endsWith(Shortcuts.Childnodes)) {
+        if (isPathReset || path.endsWith(Shortcuts.Childnodes)) {
           resetPaths.add(path)
         }
         data[path] = value

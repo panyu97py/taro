@@ -62,7 +62,7 @@ export class TaroNode extends TaroEventTarget {
       this.enqueueUpdate({
         path: child._path,
         value: this.hydrate(child)
-      })
+      }, true)
     })
   }
 
@@ -202,14 +202,14 @@ export class TaroNode extends TaroEventTarget {
           this.enqueueUpdate({
             path: newChild._path,
             value: this.hydrate(newChild)
-          })
+          }, true)
         }
       } else if (isReplace) {
         // replaceChild
         this.enqueueUpdate({
           path: newChild._path,
           value: this.hydrate(newChild)
-        })
+        }, true)
       } else {
         // insertBefore 有两种更新模式
         // 比方说有 A B C 三个节点，现在要在 C 前插入 D
@@ -339,8 +339,8 @@ export class TaroNode extends TaroEventTarget {
     return this.childNodes.length > 0
   }
 
-  public enqueueUpdate (payload: UpdatePayload) {
-    this._root?.enqueueUpdate(payload)
+  public enqueueUpdate (payload: UpdatePayload, isPathReset = false) {
+    this._root?.enqueueUpdate(payload, isPathReset)
   }
 
   public get ownerDocument (): TaroDocument {
